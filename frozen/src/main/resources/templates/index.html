@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Toko Frozen Food Web</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+    <h2 class="mb-4 text-center text-primary fw-bold">❄️ Aplikasi Kasir Frozen Food</h2>
+
+    <div class="text-center mb-3">
+        <h6 class="text-muted">Total Pendapatan</h6>
+        <h3 class="text-success">Rp<span th:text="${#numbers.formatInteger(totalPendapatan, 0, 'POINT')}"></span></h3>
+    </div>
+
+    <div th:if="${sukses}" class="alert alert-success col-md-6 mx-auto card shadow-sm" role="alert">
+        <h4 class="alert-heading text-center font-monospace">=== STRUK PEMBELIAN ===</h4>
+        <div th:if="${strukItems != null}">
+            <div th:each="item : ${strukItems}" class="mb-1">
+                <strong th:text="${item.nama}"></strong>
+                x <span th:text="${item.jumlah}"></span>
+                = Rp<span th:text="${#numbers.formatInteger(item.subtotal, 0, 'POINT')}"></span>
+            </div>
+        </div>
+        <div th:if="${strukItems == null}">
+            <p class="mb-1"><strong>Produk:</strong> <span th:text="${strukNama}"></span></p>
+            <p class="mb-1"><strong>Jumlah Beli:</strong> <span th:text="${strukJumlah}"></span></p>
+            <p class="mb-1"><strong>Subtotal:</strong> Rp<span th:text="${#numbers.formatInteger(strukSubtotal, 0, 'POINT')}"></span></p>
+            <p class="mb-1"><strong>Diskon:</strong> Rp<span th:text="${#numbers.formatInteger(strukDiskon, 0, 'POINT')}"></span></p>
+        </div>
+        <hr>
+        <h5 class="mb-0 text-end"><strong>Total Bayar:</strong> Rp<span th:text="${#numbers.formatInteger(strukTotal, 0, 'POINT')}"></span></h5>
+    </div>
+    
+    <div th:if="${gagal}" class="alert alert-danger text-center col-md-6 mx-auto" th:text="${gagal}"></div>
+
+    <div class="row g-4 mt-2">
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-3 text-secondary">Kelola Data Produk</h5>
+                    <form th:action="@{/simpan}" th:object="${produkBaru}" method="POST">
+                        <input type="hidden" id="prodId" th:field="*{id}">
+                        <div class="mb-3">
+                            <label class="form-label">Nama Produk</label>
+                            <input type="text" id="prodNama" th:field="*{nama}" class="form-control" required placeholder="Contoh: Nugget Ayam">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Harga (Rp)</label>
+                            <input type="number" id="prodHarga" th:field="*{harga}" class="form-control" required placeholder="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Stok Awal</label>
+                            <input type="number" id="prodStok" th:field="*{stok}" class="form-control" required placeholder="0">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 shadow-sm">Simpan / Perbarui Data</button>
+                        <button type="button" onclick="clearForm()" class="btn btn-light w-100 mt-2 border">Clear Form</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <form th:action="@{/}" method="GET" class="row g-2 mb-4">
+                        <div class="col-sm-9">
+                            <input type="text" name="cari" class="form-control" placeholder="Cari nama produk frozen food...">
+                        </div>
+                        <div class="col-sm-3">
+                            <button type="submit" class="btn btn-secondary w-100">Cari</button>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+                        <form th:action="@{/beli-multiple}" method="POST">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Nama Produk</th>
+                                        <th>Harga</th>
+                                        <th>Stok</th>
+                                        <th>Jumlah Beli</th>
+                                        <th class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="p : ${daftarProduk}">
+                                        <td th:text="${p.nama}" class="fw-semibold"></td>
+                                        <td>Rp<span th:text="${#numbers.formatInteger(p.harga, 0, 'POINT')}"></span></td>
+                                        <td>
+                                            <span th:text="${p.stok}" class="badge" th:classappend="${p.stok > 5} ? 'bg-success' : 'bg-danger'"></span>
+                                        </td>
+                                        <td>
+                                            <input type="hidden" name="id" th:value="${p.id}">
+                                            <input type="number" name="jumlah" class="form-control" min="0" value="0" th:attr="max=${p.stok}">
+                                        </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-success me-1"
+                                                    type="button"
+                                                    th:attr="data-id=${p.id}, data-nama=${p.nama}"
+                                                    onclick="bukaModalBeli(this.dataset.id, this.dataset.nama)">Beli</button>
+                                            <button class="btn btn-sm btn-warning me-1"
+                                                    type="button"
+                                                    th:attr="data-id=${p.id}, data-nama=${p.nama}, data-harga=${p.harga}, data-stok=${p.stok}"
+                                                    onclick="isiForm(this.dataset.id, this.dataset.nama, this.dataset.harga, this.dataset.stok)">Edit</button>
+                                            <a th:href="@{/hapus/{id}(id=${p.id})}" class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus produk ini?')">Hapus</a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="submit" class="btn btn-primary w-100">Checkout Banyak Produk</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalBeli" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form th:action="@{/beli}" method="POST" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Transaksi Pembelian</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="beliId">
+        <p>Anda akan membeli produk: <strong id="beliNama"></strong></p>
+        <div class="mb-3">
+            <label class="form-label">Masukkan Jumlah Beli</label>
+            <input type="number" name="jumlah" class="form-control" required min="1" value="1">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-success">Proses Pembelian</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function isiForm(id, nama, harga, stok) {
+        document.getElementById('prodId').value = id;
+        document.getElementById('prodNama').value = nama;
+        document.getElementById('prodHarga').value = harga;
+        document.getElementById('prodStok').value = stok;
+    }
+    function clearForm() {
+        document.getElementById('prodId').value = '';
+        document.getElementById('prodNama').value = '';
+        document.getElementById('prodHarga').value = '';
+        document.getElementById('prodStok').value = '';
+    }
+    function bukaModalBeli(id, nama) {
+        document.getElementById('beliId').value = id;
+        document.getElementById('beliNama').innerText = nama;
+        var myModal = new bootstrap.Modal(document.getElementById('modalBeli'));
+        myModal.show();
+    }
+</script>
+</body>
+</html>
